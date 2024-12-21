@@ -1,0 +1,40 @@
+# General
+.DS_Store
+Thumbs.db
+node_modules/
+.env
+.env.local
+.env.*.local
+_apitest
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-specific files
+*.swp
+.swo
+.idea/
+.vscode/
+*.bak
+
+# Client-specific
+/client/node_modules/
+/client/.env
+/client/build/
+/client/dist/
+/client/public/*.map
+/client/.next/
+/client/out/
+/client/coverage/
+
+# Server-specific
+/server/node_modules/
+/server/.env
+/server/dist/
+/server/coverage/
+/server/logs/
