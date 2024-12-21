@@ -52,10 +52,13 @@ client.on('message', (topic, message) => {
     console.log("Received MQTT message:", data);
     const currentTime = new Date().toISOString();
 
+    // Menangani nilai weight null atau undefined
+    const weight = data.weight ?? 0;
+
     // Save data to SQLite database
     db.run(
       'INSERT INTO BirdCageData (time, weight, motionDetected, relayStatus, servoPosition) VALUES (?, ?, ?, ?, ?)',
-      [currentTime, data.weight, data.motionDetected, data.relayStatus, data.servoPosition],
+      [currentTime, weight, data.motionDetected, data.relayStatus, data.servoPosition],
       (err) => {
         if (err) {
           console.error('Error inserting data:', err);
