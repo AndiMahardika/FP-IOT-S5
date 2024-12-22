@@ -16,6 +16,7 @@ app.use(cors(
 // Setup SQLite database
 const db = new sqlite3.Database('./smart-bird-cage.sqlite');
 const dbCleaningInfo = new sqlite3.Database('./cleaning-info.sqlite');
+const dbBathInfo = new sqlite3.Database('./bath-info.sqlite');
 
 // Create table if not exists
 db.run(`
@@ -33,13 +34,21 @@ dbCleaningInfo.run(`
     time TEXT NOT NULL,
     date TEXT NOT NULL,
     timeCleaning TEXT NOT NULL,
-    day REAL NOT NULL,
+    info TEXT
+  )
+`);
+
+dbBathInfo.run(`
+  CREATE TABLE IF NOT EXISTS BathInfo (
+    time TEXT NOT NULL,
+    date TEXT NOT NULL,
+    timeBathing TEXT NOT NULL,
     info TEXT
   )
 `);
 
 // Connect to MQTT broker
-const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 6369 });
+const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 4840 });
 
 client.on('connect', () => {
   console.log('Connected to MQTT Broker');
@@ -52,13 +61,16 @@ client.on('message', (topic, message) => {
     console.log("Received MQTT message:", data);
     const currentTime = new Date().toISOString();
 
-    // Menangani nilai weight null atau undefined
+    // Menangani nilai null atau undefined
     const weight = data.weight ?? 0;
+    const motionDetected = data.motionDetected ?? 0;
+    const relayStatus = data.relayStatus ?? 'OFF';
+    const servoPosition = data.servoPosition ?? 0;
 
     // Save data to SQLite database
     db.run(
       'INSERT INTO BirdCageData (time, weight, motionDetected, relayStatus, servoPosition) VALUES (?, ?, ?, ?, ?)',
-      [currentTime, weight, data.motionDetected, data.relayStatus, data.servoPosition],
+      [currentTime, weight, motionDetected, relayStatus, servoPosition],
       (err) => {
         if (err) {
           console.error('Error inserting data:', err);
@@ -67,15 +79,26 @@ client.on('message', (topic, message) => {
     );
 
     // Save cleaning info to SQLite database
-    if(data.cleaningInfo){
-      const dataCleaning = data.cleaningInfo;
-      console.log("Waktu cleaning info:", dataCleaning);
+    if(data.type?.toLowerCase() === 'cleaninginfo') {
       dbCleaningInfo.run(
-        'INSERT INTO CleaningInfo (time, date, timeCleaning, day, info) VALUES (?, ?, ?, ?, ?)',
-        [currentTime, dataCleaning.date, dataCleaning.time, dataCleaning.day, dataCleaning.info],
+        'INSERT INTO CleaningInfo (time, date, timeCleaning, info) VALUES (?, ?, ?, ?)',
+        [currentTime, data.date, data.time, data.info],
         (err) => {
           if (err) {
             console.error('Error inserting cleaning info:', err);
+          }
+        }
+      );
+    }
+
+    // Save bathing info to SQLite database
+    if(data.type?.toLowerCase() === 'bathinginfo') {
+      dbBathInfo.run(
+        'INSERT INTO BathInfo (time, date, timeBathing, info) VALUES (?, ?, ?, ?)',
+        [currentTime, data.date, data.time, data.info],
+        (err) => {
+          if (err) {
+            console.error('Error inserting bathing info:', err);
           }
         }
       );
@@ -102,6 +125,17 @@ app.get('/api/cleanings', (req, res) => {
   dbCleaningInfo.all('SELECT * FROM CleaningInfo', (err, rows) => {
     if (err) {
       res.status(500).send('Error fetching cleaning info');
+    } else {
+      res.json(rows);
+    }
+  });
+});
+
+// API to get all bathing info
+app.get('/api/bathings', (req, res) => {
+  dbBathInfo.all('SELECT * FROM BathInfo', (err, rows) => {
+    if (err) {
+      res.status(500).send('Error fetching bathing info');
     } else {
       res.json(rows);
     }
