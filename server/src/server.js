@@ -3,6 +3,8 @@ import express from 'express';
 import mqtt from 'mqtt';
 import sqlite3 from 'sqlite3';
 import cors from 'cors';
+import axios from 'axios';
+import { formatDateToIndo } from './utils/date.js';
 
 const app = express();
 const port = 5000;
@@ -17,6 +19,9 @@ app.use(cors(
 const db = new sqlite3.Database('./smart-bird-cage.sqlite');
 const dbCleaningInfo = new sqlite3.Database('./cleaning-info.sqlite');
 const dbBathInfo = new sqlite3.Database('./bath-info.sqlite');
+
+// token blynk
+const BLYNK_AUTH_TOKEN = 'cIl7lbp5Ti7BnileOZFlXZmJBwbf8fU6';
 
 // Create table if not exists
 db.run(`
@@ -48,7 +53,7 @@ dbBathInfo.run(`
 `);
 
 // Connect to MQTT broker
-const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 4840 });
+const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 7312 });
 
 client.on('connect', () => {
   console.log('Connected to MQTT Broker');
@@ -77,6 +82,13 @@ client.on('message', (topic, message) => {
         }
       }
     );
+
+    // send to blynk
+    sendToBlynk('V0', weight);
+    sendToBlynk('V1', motionDetected);
+    sendToBlynk('V2', relayStatus);
+    sendToBlynk('V3', servoPosition);
+    sendToBlynk('V4', formatDateToIndo(currentTime));
 
     // Save cleaning info to SQLite database
     if(data.type?.toLowerCase() === 'cleaninginfo') {
@@ -150,3 +162,18 @@ app.get('/api/data', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+// Blynk
+const sendToBlynk = async (virtualPin, value) => {
+  try {
+    const response = await axios.get(`https://blynk.cloud/external/api/update`, {
+      params: {
+        token: BLYNK_AUTH_TOKEN,
+        [virtualPin]: value,
+      },
+    });
+    console.log(`Data successfully sent to Blynk (Pin ${virtualPin}: ${value})`);
+  } catch (error) {
+    console.error('Error sending data to Blynk:', error.response?.data || error.message);
+  }
+};
