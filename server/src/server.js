@@ -53,7 +53,7 @@ dbBathInfo.run(`
 `);
 
 // Connect to MQTT broker
-const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 7312 });
+const client = mqtt.connect('mqtt://exlxu4u.localto.net', { port: 6233 });
 
 client.on('connect', () => {
   console.log('Connected to MQTT Broker');
